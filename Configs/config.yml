@@ -1,11 +1,11 @@
 log_dir: "Checkpoint"
-save_freq: 10
+save_freq: 1
 device: "cuda"
 epochs: 200
-batch_size: 64
+batch_size: 32
 pretrained_model: ""
-train_data: "Data/train_list.txt"
-val_data: "Data/val_list.txt"
+train_data: "/home/husein/ssd3/tts/train_list.txt"
+val_data: "/home/husein/ssd3/tts/val_list.txt"
 
 preprocess_parasm:
   sr: 24000
@@ -19,7 +19,7 @@ preprocess_parasm:
 model_params:
    input_dim: 80
    hidden_dim: 256
-   n_token: 80
+   n_token: 178
    token_embedding_dim: 256
 
 optimizer_params:

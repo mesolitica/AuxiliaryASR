@@ -12,7 +12,6 @@ import yaml
 import shutil
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
 import click
 
 import logging
@@ -32,8 +31,6 @@ def main(config_path):
     log_dir = config['log_dir']
     if not osp.exists(log_dir): os.mkdir(log_dir)
     shutil.copy(config_path, osp.join(log_dir, osp.basename(config_path)))
-
-    writer = SummaryWriter(log_dir + "/tensorboard")
 
     # write logs
     file_handler = logging.FileHandler(osp.join(log_dir, 'train.log'))
@@ -103,10 +100,6 @@ def main(config_path):
         for key, value in results.items():
             if isinstance(value, float):
                 logger.info('%-15s: %.4f' % (key, value))
-                writer.add_scalar(key, value, epoch)
-            else:
-                for v in value:
-                    writer.add_figure('eval_attn', plot_image(v), epoch)
         if (epoch % save_freq) == 0:
             trainer.save_checkpoint(osp.join(log_dir, 'epoch_%05d.pth' % epoch))
             

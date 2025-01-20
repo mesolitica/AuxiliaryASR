@@ -1,5 +1,6 @@
 #coding: utf-8
 
+import re
 import os
 import os.path as osp
 import time
@@ -14,15 +15,26 @@ import torch.nn.functional as F
 import torchaudio
 from torch.utils.data import DataLoader
 
-from g2p_en import G2p
+import phonemizer
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-from text_utils import TextCleaner
+
 np.random.seed(1)
 random.seed(1)
-DEFAULT_DICT_PATH = osp.join(osp.dirname(__file__), 'word_index_dict.txt')
+
+_pad = "$"
+_punctuation = ';:,.!?¡¿—…"«»“” '
+_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+_letters_ipa = "ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ"
+
+symbols = [_pad] + list(_punctuation) + list(_letters) + list(_letters_ipa)
+
+dicts = {}
+for i in range(len((symbols))):
+    dicts[symbols[i]] = i
+
 SPECT_PARAMS = {
     "n_fft": 2048,
     "win_length": 1200,
@@ -35,10 +47,28 @@ MEL_PARAMS = {
     "hop_length": 300
 }
 
+dicts = {}
+for i in range(len((symbols))):
+    dicts[symbols[i]] = i
+
+class TextCleaner:
+    def __init__(self, dummy=None):
+        self.word_index_dictionary = dicts
+    def __call__(self, text, ori_text):
+        filtered = [c for c in text if c in self.word_index_dictionary]
+        filtered = ''.join(filtered)
+        filtered = re.sub(r'[ ]+', ' ', filtered).strip()
+        indexes = []
+        for char in filtered:
+            try:
+                indexes.append(self.word_index_dictionary[char])
+            except KeyError:
+                print('error', filtered, ori_text)
+        return indexes
+
 class MelDataset(torch.utils.data.Dataset):
     def __init__(self,
                  data_list,
-                 dict_path=DEFAULT_DICT_PATH,
                  sr=24000
                 ):
 
@@ -47,13 +77,13 @@ class MelDataset(torch.utils.data.Dataset):
 
         _data_list = [l[:-1].split('|') for l in data_list]
         self.data_list = [data if len(data) == 3 else (*data, 0) for data in _data_list]
-        self.text_cleaner = TextCleaner(dict_path)
+        self.text_cleaner = TextCleaner()
         self.sr = sr
 
         self.to_melspec = torchaudio.transforms.MelSpectrogram(**MEL_PARAMS)
         self.mean, self.std = -4, 4
-        
-        self.g2p = G2p()
+
+        self.g2p = phonemizer.backend.EspeakBackend(language='ms', preserve_punctuation=True,  with_stress=True)
 
     def __len__(self):
         return len(self.data_list)
@@ -82,10 +112,8 @@ class MelDataset(torch.utils.data.Dataset):
         wave, sr = sf.read(wave_path)
 
         # phonemize the text
-        ps = self.g2p(text.replace('-', ' '))
-        if "'" in ps:
-            ps.remove("'")
-        text = self.text_cleaner(ps)
+        ps = self.g2p.phonemize([text], strip=True)[0]
+        text = self.text_cleaner(ps, text)
         blank_index = self.text_cleaner.word_index_dictionary[" "]
         text.insert(0, blank_index) # add a blank at the beginning (silence)
         text.append(blank_index) # add a blank at the end (silence)
