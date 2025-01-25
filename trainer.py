@@ -185,7 +185,7 @@ class Trainer(object):
         self.model.train()
         for train_steps_per_epoch, batch in enumerate(tqdm(self.train_dataloader, desc="[train]"), 1):
             losses = self.run(batch)
-            if train_steps_per_epoch % 100 == 0:
+            if train_steps_per_epoch % 10 == 0:
                 print(losses)
             for key, value in losses.items():
                 train_losses["train/%s" % key].append(value)

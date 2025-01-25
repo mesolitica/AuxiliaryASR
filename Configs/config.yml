@@ -1,9 +1,9 @@
-log_dir: "Checkpoint"
+log_dir: "Checkpoint4"
 save_freq: 1
 device: "cuda"
 epochs: 200
-batch_size: 32
-pretrained_model: ""
+batch_size: 64
+pretrained_model: "Checkpoint3/epoch_00004.pth"
 train_data: "/home/husein/ssd3/tts/train_list.txt"
 val_data: "/home/husein/ssd3/tts/val_list.txt"
 
